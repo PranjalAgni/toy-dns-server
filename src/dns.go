@@ -1,10 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 func main() {
 	var rootNameServer = "198.41.0.4"
 	fmt.Println("Going to build our toy dns resolver ✨", rootNameServer)
+
+	for j := 1; j <= 10; j++ {
+		fmt.Println("A random number = ", rand.Intn(101))
+	}
 }
 
 // Steps
