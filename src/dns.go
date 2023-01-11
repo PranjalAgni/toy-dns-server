@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
+	"net"
+
+	"github.com/miekg/dns"
 )
 
 func main() {
@@ -10,9 +12,16 @@ func main() {
 	var rootNameServer = "198.41.0.4"
 	fmt.Println("Going to build our toy dns resolver ✨", rootNameServer)
 
-	for j := 1; j <= 10; j++ {
-		fmt.Println("A random number = ", rand.Intn(101))
-	}
+}
+
+func dnsQuery(name string, server net.IP) *dns.Msg {
+	fmt.Printf("dig -r @%s %s\n", server.String(), name)
+	msg := new(dns.Msg)
+	msg.SetQuestion("name", dns.TypeA)
+	client := new(dns.Client)
+	reply, _, _ := client.Exchange(msg, server.String()+":53")
+	return reply
+
 }
 
 // Steps
