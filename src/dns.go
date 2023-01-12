@@ -3,15 +3,35 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
+	"strings"
 
 	"github.com/miekg/dns"
 )
 
-func main() {
-	// standard domestic root nameserver ip
-	var rootNameServer = "198.41.0.4"
-	fmt.Println("Going to build our toy dns resolver ✨", rootNameServer)
+// standard domestic root nameserver ip
+var rootNameServer = "198.41.0.4"
 
+func resolve(name string) net.IP {
+	// Start from the nameserver
+	nameserver := net.ParseIP(rootNameServer)
+	for {
+		reply := dnsQuery(name, nameserver)
+		ip := getAnswer(reply)
+		fmt.Println("IP: ", ip)
+		return nil
+	}
+}
+
+func getAnswer(reply *dns.Msg) net.IP {
+	for _, record := range reply.Answer {
+		if record.Header().Rrtype == dns.TypeA {
+			fmt.Println(" ", record)
+			return record.(*dns.A).A
+		}
+	}
+
+	return nil
 }
 
 func dnsQuery(name string, server net.IP) *dns.Msg {
@@ -21,7 +41,15 @@ func dnsQuery(name string, server net.IP) *dns.Msg {
 	client := new(dns.Client)
 	reply, _, _ := client.Exchange(msg, server.String()+":53")
 	return reply
+}
 
+func main() {
+	name := os.Args[1]
+	fmt.Println("Going to resolve ", name)
+	if !strings.HasSuffix(name, ".") {
+		name += "."
+	}
+	fmt.Println("Result: ", resolve(name))
 }
 
 // Steps
