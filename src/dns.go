@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/miekg/dns"
 )
 
@@ -18,20 +19,22 @@ func resolve(name string) net.IP {
 	for {
 		reply := dnsQuery(name, nameserver)
 		if ip := getAnswer(reply); ip != nil {
-			fmt.Println("IP: ", ip)
 			return ip
 		} else if nsIP := getGlue(reply); nsIP != nil {
 			nameserver = nsIP
+		} else if domain := getNS(reply); domain != nil {
+			nameserver = domain
 		} else {
-			panic("Cannot resolve the IP")
+			break
 		}
 	}
+	return nil
 }
 
 func getAnswer(reply *dns.Msg) net.IP {
 	for _, record := range reply.Answer {
 		if record.Header().Rrtype == dns.TypeA {
-			fmt.Println(" ", record)
+			fmt.Println("Ans: ", record)
 			return record.(*dns.A).A
 		}
 	}
@@ -41,7 +44,7 @@ func getAnswer(reply *dns.Msg) net.IP {
 func getGlue(reply *dns.Msg) net.IP {
 	for _, record := range reply.Extra {
 		if record.Header().Rrtype == dns.TypeA {
-			fmt.Println(" ", record)
+			fmt.Println("Glue: ", record)
 			return record.(*dns.A).A
 		}
 	}
@@ -49,28 +52,47 @@ func getGlue(reply *dns.Msg) net.IP {
 	return nil
 }
 
+func getNS(reply *dns.Msg) net.IP {
+	for _, record := range reply.Extra {
+		if record.Header().Rrtype == dns.TypeA {
+			fmt.Println("NS: ", record)
+			return record.(*dns.A).A
+		}
+	}
+	return nil
+}
+
+// This function takes care of preparing the DNS query and sending them over UDP
 func dnsQuery(name string, server net.IP) *dns.Msg {
 	fmt.Printf("dig -r @%s %s\n", server.String(), name)
+	// prepare the dns query
 	msg := new(dns.Msg)
+	// set the domain name we are querying in question
 	msg.SetQuestion(name, dns.TypeA)
+	// initalizing DNS client
 	client := new(dns.Client)
+	// send the request over UDP
 	reply, _, _ := client.Exchange(msg, server.String()+":53")
 	return reply
 }
 
 func main() {
+	// extracting domain name for which we will find IP address
 	name := os.Args[1]
 	fmt.Println("Finding the IP for: ", name)
 	if !strings.HasSuffix(name, ".") {
 		name += "."
 	}
-	fmt.Println("Result: ", resolve(name))
+	// run the DNS resolver and print the result
+	ip := resolve(name)
+	fmt.Println()
+	if ip == nil {
+		red := color.New(color.FgHiRed)
+		boldRed := red.Add(color.Bold)
+		boldRed.Printf("Unable to find the ip for %s", name)
+	} else {
+		green := color.New(color.FgHiGreen)
+		boldGreen := green.Add(color.Bold)
+		boldGreen.Printf("Result: %s", ip)
+	}
 }
-
-// Steps
-// Send DNS query to root name server
-// Root name server will return the NS address of specific TLD
-// Ask the same DNS query to that NS TLD
-// It will provide the address of Authorative NS
-// Ask the IP(dns query) to that address
-// Yay we got our IP
