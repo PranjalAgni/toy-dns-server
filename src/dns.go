@@ -31,6 +31,7 @@ func resolve(name string) net.IP {
 	return nil
 }
 
+// This function parses the "answer section" of DNS response, where the IP address of your website is present
 func getAnswer(reply *dns.Msg) net.IP {
 	for _, record := range reply.Answer {
 		if record.Header().Rrtype == dns.TypeA {
@@ -41,6 +42,8 @@ func getAnswer(reply *dns.Msg) net.IP {
 	return nil
 }
 
+// This is additional section, where “glue records” live.
+// Glue records holds IP address of nameserver where your query is routed
 func getGlue(reply *dns.Msg) net.IP {
 	for _, record := range reply.Extra {
 		if record.Header().Rrtype == dns.TypeA {
@@ -52,8 +55,9 @@ func getGlue(reply *dns.Msg) net.IP {
 	return nil
 }
 
+// This is the "authority section", it has domain names of the other nameservers where your query is routed
 func getNS(reply *dns.Msg) net.IP {
-	for _, record := range reply.Extra {
+	for _, record := range reply.Ns {
 		if record.Header().Rrtype == dns.TypeA {
 			fmt.Println("NS: ", record)
 			return record.(*dns.A).A
@@ -64,7 +68,7 @@ func getNS(reply *dns.Msg) net.IP {
 
 // This function takes care of preparing the DNS query and sending them over UDP
 func dnsQuery(name string, server net.IP) *dns.Msg {
-	fmt.Printf("dig -r @%s %s\n", server.String(), name)
+	fmt.Printf("dig @%s %s\n", server.String(), name)
 	// prepare the dns query
 	msg := new(dns.Msg)
 	// set the domain name we are querying in question
