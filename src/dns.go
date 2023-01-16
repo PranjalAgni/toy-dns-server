@@ -93,7 +93,7 @@ func main() {
 	if ip == nil {
 		red := color.New(color.FgHiRed)
 		boldRed := red.Add(color.Bold)
-		boldRed.Printf("Unable to find the ip for %s", name)
+		boldRed.Printf("Unable to find the ip for %s\n", name)
 	} else {
 		green := color.New(color.FgGreen)
 		boldGreen := green.Add(color.Bold)
