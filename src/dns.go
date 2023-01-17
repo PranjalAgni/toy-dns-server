@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -17,7 +18,10 @@ func resolve(name string) net.IP {
 	// Start from the nameserver
 	nameserver := net.ParseIP(rootNameServer)
 	for {
-		reply := dnsQuery(name, nameserver)
+		reply, err := dnsQuery(name, nameserver)
+		if err != nil {
+			log.Fatal("DNS query timeout: ", err)
+		}
 		if ip := getAnswer(reply); ip != nil {
 			return ip
 		} else if nsIP := getGlue(reply); nsIP != nil {
@@ -67,7 +71,7 @@ func getNS(reply *dns.Msg) net.IP {
 }
 
 // This function takes care of preparing the DNS query and sending them over UDP
-func dnsQuery(name string, server net.IP) *dns.Msg {
+func dnsQuery(name string, server net.IP) (*dns.Msg, error) {
 	fmt.Printf("dig @%s %s\n", server.String(), name)
 	// prepare the dns query
 	msg := new(dns.Msg)
@@ -76,8 +80,8 @@ func dnsQuery(name string, server net.IP) *dns.Msg {
 	// initalizing DNS client
 	client := new(dns.Client)
 	// send the request over UDP
-	reply, _, _ := client.Exchange(msg, server.String()+":53")
-	return reply
+	reply, _, err := client.Exchange(msg, server.String()+":53")
+	return reply, err
 }
 
 func main() {
@@ -95,8 +99,7 @@ func main() {
 		boldRed := red.Add(color.Bold)
 		boldRed.Printf("Unable to find the ip for %s\n", name)
 	} else {
-		green := color.New(color.FgGreen)
-		boldGreen := green.Add(color.Bold)
-		boldGreen.Printf("Result: %s\n", ip)
+		cyan := color.New(color.FgCyan)
+		cyan.Printf("IP: %s\n", ip)
 	}
 }
