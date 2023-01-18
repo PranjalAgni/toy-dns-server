@@ -11,10 +11,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-// standard domestic root nameserver ip
-var rootNameServer = "198.41.0.4"
-
-func resolve(name string) net.IP {
+func resolve(name string, rootNameServer string) net.IP {
 	// Start from the nameserver
 	nameserver := net.ParseIP(rootNameServer)
 	for {
@@ -26,8 +23,8 @@ func resolve(name string) net.IP {
 			return ip
 		} else if nsIP := getGlue(reply); nsIP != nil {
 			nameserver = nsIP
-		} else if domain := getNS(reply); domain != nil {
-			nameserver = domain
+		} else if domain := getNS(reply); domain != "" {
+			nameserver = resolve(domain, rootNameServer)
 		} else {
 			break
 		}
@@ -60,14 +57,14 @@ func getGlue(reply *dns.Msg) net.IP {
 }
 
 // This is the "authority section", it has domain names of the other nameservers where your query is routed
-func getNS(reply *dns.Msg) net.IP {
+func getNS(reply *dns.Msg) string {
 	for _, record := range reply.Ns {
-		if record.Header().Rrtype == dns.TypeA {
+		if record.Header().Rrtype == dns.TypeNS {
 			fmt.Println("NS: ", record)
-			return record.(*dns.A).A
+			return record.(*dns.NS).Ns
 		}
 	}
-	return nil
+	return ""
 }
 
 // This function takes care of preparing the DNS query and sending them over UDP
@@ -85,6 +82,8 @@ func dnsQuery(name string, server net.IP) (*dns.Msg, error) {
 }
 
 func main() {
+	// standard domestic root nameserver(.) ip
+	var rootNameServer = "198.41.0.4"
 	// extracting domain name for which we will find IP address
 	name := os.Args[1]
 	fmt.Println("Finding the IP for: ", name)
@@ -92,7 +91,7 @@ func main() {
 		name += "."
 	}
 	// run the DNS resolver and print the result
-	ip := resolve(name)
+	ip := resolve(name, rootNameServer)
 	fmt.Println()
 	if ip == nil {
 		red := color.New(color.FgHiRed)
